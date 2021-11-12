@@ -278,8 +278,7 @@ namespace DSP_LW3.Extensions
             sourceBitmap.UnlockBits(sourceData);
 
             int filterOffset = (matrixSize - 1) / 2;
-            List<uint> neighbourPixels = new();
-            byte[] middlePixel;
+            List<List<byte>> neighbourPixels = new() { new(), new(), new(), new() };
             int bitmapHeight = sourceBitmap.Height;
             int bitmapWidth = sourceBitmap.Width;
             for (int offsetY = 0; offsetY < bitmapHeight; offsetY++)
@@ -287,7 +286,6 @@ namespace DSP_LW3.Extensions
                 for (int offsetX = 0; offsetX < bitmapWidth; offsetX++)
                 {
                     int byteOffset = offsetY * sourceData.Stride + offsetX * 4;
-                    neighbourPixels.Clear();
                     for (int filterY = -filterOffset; filterY <= filterOffset; filterY++)
                     {
                         for (int filterX = -filterOffset; filterX <= filterOffset; filterX++)
@@ -311,17 +309,20 @@ namespace DSP_LW3.Extensions
                                 calcOffset -= filterOffset * 4;
                             }
 
-                            neighbourPixels.Add(BitConverter.ToUInt32(pixelBuffer, calcOffset));
+                            for (int i = 0; i < 4; i++)
+                            {
+                                neighbourPixels[i].Add(pixelBuffer[calcOffset + i]);
+                            }
                         }
                     }
 
-                    neighbourPixels.Sort();
-                    middlePixel = BitConverter.GetBytes(neighbourPixels[neighbourPixels.Count / 2]);
-
-                    resultBuffer[byteOffset] = middlePixel[0];
-                    resultBuffer[byteOffset + 1] = middlePixel[1];
-                    resultBuffer[byteOffset + 2] = middlePixel[2];
-                    resultBuffer[byteOffset + 3] = middlePixel[3];
+                    int median = matrixSize * matrixSize / 2;
+                    for (int i = 0; i < 4; i++)
+                    {
+                        neighbourPixels[i].Sort();
+                        resultBuffer[byteOffset + i] = neighbourPixels[i][median];
+                        neighbourPixels[i].Clear();
+                    }
                 }
             }
 
