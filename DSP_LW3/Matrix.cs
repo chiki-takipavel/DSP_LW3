@@ -82,8 +82,10 @@ namespace DSP_LW3
             return (matrix, sum);
         }
 
-        public static (double[,], double) GetGaussianMatrix(double sigma, int size)
+        public static (double[,], double) GetGaussianMatrix(double sigma)
         {
+            int size = (int)Math.Ceiling(6 * sigma);
+            size = (size & 1) == 0 ? size + 1 : size;
             double[,] matrix = new double[size, size];
             int offset = (size - 1) / 2;
             double sum = 0;
@@ -94,6 +96,23 @@ namespace DSP_LW3
                     matrix[y + offset, x + offset] = 1d / (2 * Math.PI * sigma * sigma) * Math.Exp(-((x * x) + (y * y)) / (2 * sigma * sigma));
                     sum += matrix[y + offset, x + offset];
                 }
+            }
+
+            sum = 1 / sum;
+            return (matrix, sum);
+        }
+
+        public static (double[], double) Get1DGaussianMatrix(double sigma)
+        {
+            int size = (int)Math.Ceiling(6 * sigma);
+            size = (size & 1) == 0 ? size + 1 : size;
+            double[] matrix = new double[size];
+            int offset = (size - 1) / 2;
+            double sum = 0;
+            for (int x = -offset; x <= offset; x++)
+            {
+                matrix[x + offset] = 1d / (Math.Sqrt(2 * Math.PI) * sigma) * Math.Exp(-(x * x) / (2 * sigma * sigma));
+                sum += matrix[x + offset];
             }
 
             sum = 1 / sum;

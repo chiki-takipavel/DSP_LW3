@@ -39,6 +39,142 @@ namespace DSP_LW3.Extensions
             return bitmapResult;
         }
 
+        private static (byte r, byte g, byte b) NormalizeRgb(double red, double green, double blue, double factor, int bias)
+        {
+            red = factor * red + bias;
+            green = factor * green + bias;
+            blue = factor * blue + bias;
+
+            if (red > 255)
+            {
+                red = 255;
+            }
+            else if (red < 0)
+            {
+                red = 0;
+            }
+
+            if (green > 255)
+            {
+                green = 255;
+            }
+            else if (green < 0)
+            {
+                green = 0;
+            }
+
+            if (blue > 255)
+            {
+                blue = 255;
+            }
+            else if (blue < 0)
+            {
+                blue = 0;
+            }
+
+            return ((byte)red, (byte)green, (byte)blue);
+        }
+
+        private static Bitmap GaussianFastFilter(Bitmap sourceBitmap, double[] filterMatrix, double factor = 1, int bias = 0)
+        {
+            BitmapData sourceData = sourceBitmap.LockBits(new Rectangle(0, 0, sourceBitmap.Width, sourceBitmap.Height),
+                                                            ImageLockMode.ReadOnly,
+                                                            PixelFormat.Format32bppArgb);
+
+            byte[] pixelBuffer = new byte[sourceData.Stride * sourceData.Height];
+            byte[] resultBuffer = new byte[sourceData.Stride * sourceData.Height];
+
+            Marshal.Copy(sourceData.Scan0, pixelBuffer, 0, pixelBuffer.Length);
+            sourceBitmap.UnlockBits(sourceData);
+
+            int filterWidth = filterMatrix.Length;
+            int filterOffset = (filterWidth - 1) / 2;
+            int bitmapHeight = sourceBitmap.Height;
+            int bitmapWidth = sourceBitmap.Width;
+            Parallel.For(0, bitmapHeight, y =>
+            {
+                for (int x = 0; x < bitmapWidth; x++)
+                {
+                    double blue = 0;
+                    double green = 0;
+                    double red = 0;
+                    int byteOffset = y * sourceData.Stride + x * 4;
+                    for (int filterX = -filterOffset; filterX <= filterOffset; filterX++)
+                    {
+                        int calcOffset = byteOffset + (filterX * 4);
+                        if (filterX + x < 0)
+                        {
+                            calcOffset += filterOffset * 4;
+                        }
+                        if (filterX + x >= bitmapWidth)
+                        {
+                            calcOffset -= filterOffset * 4;
+                        }
+
+                        blue += pixelBuffer[calcOffset] * filterMatrix[filterX + filterOffset];
+                        green += pixelBuffer[calcOffset + 1] * filterMatrix[filterX + filterOffset];
+                        red += pixelBuffer[calcOffset + 2] * filterMatrix[filterX + filterOffset];
+                    }
+
+                    (byte R, byte G, byte B) = NormalizeRgb(red, green, blue, factor, bias);
+                    
+                    resultBuffer[byteOffset] = B;
+                    resultBuffer[byteOffset + 1] = G;
+                    resultBuffer[byteOffset + 2] = R;
+                    resultBuffer[byteOffset + 3] = 255;
+                }
+            });
+
+            for (int i = 0; i < resultBuffer.Length; i++)
+            {
+                pixelBuffer[i] = resultBuffer[i];
+            }
+
+            Parallel.For(0, bitmapHeight, y =>
+            {
+                for (int x = 0; x < bitmapWidth; x++)
+                {
+                    double blue = 0;
+                    double green = 0;
+                    double red = 0;
+                    int byteOffset = y * sourceData.Stride + x * 4;
+                    for (int filterY = -filterOffset; filterY <= filterOffset; filterY++)
+                    {
+                        int calcOffset = byteOffset + (filterY * sourceData.Stride);
+                        if (filterY + y < 0)
+                        {
+                            calcOffset += filterOffset * sourceData.Stride;
+                        }
+                        if (filterY + y >= bitmapHeight)
+                        {
+                            calcOffset -= filterOffset * sourceData.Stride;
+                        }
+
+                        blue += pixelBuffer[calcOffset] * filterMatrix[filterY + filterOffset];
+                        green += pixelBuffer[calcOffset + 1] * filterMatrix[filterY + filterOffset];
+                        red += pixelBuffer[calcOffset + 2] * filterMatrix[filterY + filterOffset];
+                    }
+
+                    (byte R, byte G, byte B) = NormalizeRgb(red, green, blue, factor, bias);
+
+                    resultBuffer[byteOffset] = B;
+                    resultBuffer[byteOffset + 1] = G;
+                    resultBuffer[byteOffset + 2] = R;
+                    resultBuffer[byteOffset + 3] = 255;
+                }
+            });
+
+            Bitmap resultBitmap = new(bitmapWidth, bitmapHeight);
+            BitmapData resultData = resultBitmap.LockBits(new Rectangle(0, 0, resultBitmap.Width, resultBitmap.Height),
+                                                            ImageLockMode.WriteOnly,
+                                                            PixelFormat.Format32bppArgb);
+
+            Marshal.Copy(resultBuffer, 0, resultData.Scan0, resultBuffer.Length);
+            resultBitmap.UnlockBits(resultData);
+
+            return resultBitmap;
+        }
+
         private static Bitmap ConvolutionFilter(Bitmap sourceBitmap, double[,] filterMatrix, double factor = 1, int bias = 0)
         {
             BitmapData sourceData = sourceBitmap.LockBits(new Rectangle(0, 0, sourceBitmap.Width, sourceBitmap.Height),
@@ -93,46 +229,16 @@ namespace DSP_LW3.Extensions
                         }
                     }
 
-                    blue = factor * blue + bias;
-                    green = factor * green + bias;
-                    red = factor * red + bias;
+                    (byte R, byte G, byte B) = NormalizeRgb(red, green, blue, factor, bias);
 
-                    if (blue > 255)
-                    {
-                        blue = 255;
-                    }
-                    else if (blue < 0)
-                    {
-                        blue = 0;
-                    }
-
-                    if (green > 255)
-                    {
-                        green = 255;
-                    }
-                    else if (green < 0)
-                    {
-                        green = 0;
-                    }
-
-                    if (red > 255)
-                    {
-                        red = 255;
-                    }
-                    else if (red < 0)
-                    {
-                        red = 0;
-                    }
-
-                    resultBuffer[byteOffset] = (byte)blue;
-                    resultBuffer[byteOffset + 1] = (byte)green;
-                    resultBuffer[byteOffset + 2] = (byte)red;
+                    resultBuffer[byteOffset] = B;
+                    resultBuffer[byteOffset + 1] = G;
+                    resultBuffer[byteOffset + 2] = R;
                     resultBuffer[byteOffset + 3] = 255;
                 }
             });
 
             Bitmap resultBitmap = new(bitmapWidth, bitmapHeight);
-
             BitmapData resultData = resultBitmap.LockBits(new Rectangle(0, 0, resultBitmap.Width, resultBitmap.Height),
                                                             ImageLockMode.WriteOnly,
                                                             PixelFormat.Format32bppArgb);
@@ -337,10 +443,26 @@ namespace DSP_LW3.Extensions
             return resultBitmap;
         }
 
-        public static Bitmap GaussianBlurFilter(this Bitmap sourceBitmap, double sigma, int size = 3)
+        public static Bitmap GaussianBlurFilter(this Bitmap sourceBitmap, double sigma)
         {
-            (double[,] Matrix, double NormalizationRate) tuple = Matrix.GetGaussianMatrix(sigma, size);
+            (double[,] Matrix, double NormalizationRate) tuple = Matrix.GetGaussianMatrix(sigma);
             Bitmap resultBitmap = ConvolutionFilter(sourceBitmap, tuple.Matrix, tuple.NormalizationRate);
+
+            return resultBitmap;
+        }
+
+        public static Bitmap GaussianFastBlurFilter(this Bitmap sourceBitmap, double sigma)
+        {
+            (double[] Matrix, double NormalizationRate) tuple = Matrix.Get1DGaussianMatrix(sigma);
+            Bitmap resultBitmap = GaussianFastFilter(sourceBitmap, tuple.Matrix, tuple.NormalizationRate);
+
+            return resultBitmap;
+        }
+
+        public static Bitmap GaussianSuperFastBlurFilter(this Bitmap sourceBitmap, double sigma)
+        {
+            GaussianSuperFastFilter filter = new(sourceBitmap);
+            Bitmap resultBitmap = filter.Process(sigma);
 
             return resultBitmap;
         }

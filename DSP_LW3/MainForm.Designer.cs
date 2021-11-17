@@ -70,6 +70,8 @@ namespace DSP_LW3
             "Без фильтра",
             "Box Blur",
             "Gaussian Blur",
+            "Gaussian Fast Blur",
+            "Gaussian Super Fast Blur",
             "Motion Blur",
             "Median Filter",
             "Sobel Operator",

@@ -64,6 +64,7 @@ namespace DSP_LW3
                 selectedSource = originalBitmap;
             }
 
+            long startTime = Environment.TickCount64;
             if (selectedSource is not null)
             {
                 int filterSize;
@@ -93,7 +94,17 @@ namespace DSP_LW3
                 else if (cmbFilter.SelectedItem.ToString() == "Gaussian Blur")
                 {
                     double sigma = Convert.ToDouble(tbSigma.Text);
-                    bitmapResult = selectedSource.GaussianBlurFilter(sigma, filterSize);
+                    bitmapResult = selectedSource.GaussianBlurFilter(sigma);
+                }
+                else if (cmbFilter.SelectedItem.ToString() == "Gaussian Fast Blur")
+                {
+                    double sigma = Convert.ToDouble(tbSigma.Text);
+                    bitmapResult = selectedSource.GaussianFastBlurFilter(sigma);
+                }
+                else if (cmbFilter.SelectedItem.ToString() == "Gaussian Super Fast Blur")
+                {
+                    double sigma = Convert.ToDouble(tbSigma.Text);
+                    bitmapResult = selectedSource.GaussianSuperFastBlurFilter(sigma);
                 }
                 else if (cmbFilter.SelectedItem.ToString() == "Median Filter")
                 {
@@ -124,13 +135,20 @@ namespace DSP_LW3
                     resultBitmap = bitmapResult;
                 }
             }
+
+            long endTime = Environment.TickCount64;
+            long result = endTime - startTime;
+            MessageBox.Show($"{result} мс", "Execute time");
         }
 
         private void FilterSelectedIndexChanged(object sender, EventArgs e)
         {
             if (cmbFilter.SelectedItem.ToString() == "Без фильтра"
                 || cmbFilter.SelectedItem.ToString() == "Sobel Operator"
-                || cmbFilter.SelectedItem.ToString() == "Sharpen")
+                || cmbFilter.SelectedItem.ToString() == "Sharpen"
+                || cmbFilter.SelectedItem.ToString() == "Gaussian Blur"
+                || cmbFilter.SelectedItem.ToString() == "Gaussian Fast Blur"
+                || cmbFilter.SelectedItem.ToString() == "Gaussian Super Fast Blur")
             {
                 tbSize.Visible = false;
             }
@@ -139,7 +157,9 @@ namespace DSP_LW3
                 tbSize.Visible = true;
             }
 
-            if (cmbFilter.SelectedItem.ToString() == "Gaussian Blur")
+            if (cmbFilter.SelectedItem.ToString() == "Gaussian Blur"
+                || cmbFilter.SelectedItem.ToString() == "Gaussian Fast Blur"
+                || cmbFilter.SelectedItem.ToString() == "Gaussian Super Fast Blur")
             {
                 tbSigma.Visible = true;
             }
